@@ -9,7 +9,7 @@ Pytorch version of - https://github.com/WaqasSultani/AnomalyDetectionCVPR2018
 ## Install Anaconda Environment
 ```conda env create -f environment.yml```
 
-```conda activate adCVPR18```
+```conda activate ad```
 
 
 ## Features Extraction
@@ -17,6 +17,3 @@ Pytorch version of - https://github.com/WaqasSultani/AnomalyDetectionCVPR2018
 
 ## Training
 ```python TrainingAnomalyDetector_public.py --features_path "path-to-dataset" --annotation_path "path-to-train-annos"```
-
-## Generate ROC Curve
-```python generate_ROC.py --features_path "path-to-dataset" --annotation_path "path-to-annos"```

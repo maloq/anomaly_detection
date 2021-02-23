@@ -1,4 +1,4 @@
-name: adCVPR18
+name: ad
 channels:
   - conda-forge
   - defaults
@@ -321,5 +321,7 @@ dependencies:
     - torch==1.7.0
     - torchvision==0.4.0
     - pytorch-wrapper==1.1.0
-prefix: /home/ekosman/anaconda3
+    - PyQt5
+    - tensorboard
+prefix: /home/vssmorozov/anaconda3
 

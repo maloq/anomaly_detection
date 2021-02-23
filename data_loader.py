@@ -1,7 +1,10 @@
 import logging
 import os
-import pickle
 
+import pickle
+import sys
+from os import listdir
+from os.path import isfile, join
 import numpy as np
 import torch.utils.data as data
 from torchvision.datasets.video_utils import VideoClips
@@ -13,30 +16,37 @@ class VideoIter(data.Dataset):
                  frame_stride,
                  dataset_path=None,
                  video_transform=None,
-                 return_label=False):
+                 return_label=False,
+                 features_path='./features_MF'):
         super(VideoIter, self).__init__()
         # video clip properties
         self.frames_stride = frame_stride
         self.total_clip_length_in_frames = clip_length * frame_stride
         self.video_transform = video_transform
-
+        self.features_path = features_path
         # IO
         self.dataset_path = dataset_path
         self.video_list = self._get_video_list(dataset_path=self.dataset_path)
         self.return_label = return_label
 
         # data loading
-        if os.path.exists('video_clips.file'):
-            with open('video_clips.file', 'rb') as fp:
-                self.video_clips = pickle.load(fp)
-        else:
-            self.video_clips = VideoClips(video_paths=self.video_list,
-                                          clip_length_in_frames=self.total_clip_length_in_frames,
-                                          frames_between_clips=self.total_clip_length_in_frames,)
+        
 
-        if not os.path.exists('video_clips.file'):
-            with open('video_clips.file', 'wb') as fp:
-                pickle.dump(self.video_clips, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        self.video_clips = VideoClips(video_paths=self.video_list,
+                                      clip_length_in_frames=self.total_clip_length_in_frames,
+                                      frames_between_clips=self.total_clip_length_in_frames, )
+        #
+        # if os.path.exists('video_clips.file'):
+        #     with open('video_clips.file', 'rb') as fp:
+        #         self.video_clips = pickle.load(fp)
+        # else:
+        #     self.video_clips = VideoClips(video_paths=self.video_list,
+        #                                   clip_length_in_frames=self.total_clip_length_in_frames,
+        #                                   frames_between_clips=self.total_clip_length_in_frames,)
+        #
+        # if not os.path.exists('video_clips.file'):
+        #     with open('video_clips.file', 'wb') as fp:
+        #         pickle.dump(self.video_clips, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     @property
     def video_count(self):
@@ -71,29 +81,42 @@ class VideoIter(data.Dataset):
                 succ = True
             except Exception as e:
                 index = np.random.choice(range(0, self.__len__()))
-                logging.warning("VideoIter:: ERROR!! (Force using another index:\n{})\n{}".format(index, e))
+                trace_back = sys.exc_info()[2]
+                line = trace_back.tb_lineno
+                logging.warning(f"VideoIter: ERROR (line number {line}) !! (Force using another index:\n{index})\n{e}")
 
         return batch
 
     def _get_video_list(self, dataset_path):
-        # features_path = r'/Users/eitankosman/PycharmProjects/anomaly_features'
-        # existing_features = np.concatenate(
-        #     [[file.split('.')[0] for file in files] for path, subdirs, files in os.walk(features_path)])
-        # print(len(existing_features))
-        assert os.path.exists(dataset_path), "VideoIter:: failed to locate: `{}'".format(dataset_path)
+        features_path = self.features_path
+        existing_features = np.concatenate(
+             [[file.split('.')[0] for file in files] for path, subdirs, files in os.walk(features_path)])
+        
+        #existing_features_2 = [f for f in listdir(features_path) if isfile(join(features_path, f))]
+        
+        #print(existing_features_2[0])
+        #for s in existing_features_2:
+        #    s = s.split('.')[0]
+        
+        #print(existing_features[1])
+        #print(existing_features_2[1])
+        print('existing features: ', len(existing_features))
+        #print(len(existing_features_2))
+
+        assert os.path.exists(dataset_path), "VideoIter: failed to locate: `{}'".format(dataset_path)
         vid_list = []
-        # skp = 0
+        skp = 0
         for path, subdirs, files in os.walk(dataset_path):
             for name in files:
                 if 'mp4' not in name:
                     continue
-                # if name.split('.')[0] in existing_features:
-                    # print(f"Skipping {name}")
-                    # skp += 1
-                    # continue
+                if name.split('.')[0] in existing_features:
+                    print(f"Skipping {name}")
+                    skp += 1
+                    continue
                 vid_list.append(os.path.join(path, name))
 
-        # print(f"Skipped {skp}")
+        print(f"Skipped {skp}")
         return vid_list
 
 

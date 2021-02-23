@@ -24,13 +24,11 @@ import numpy as np
 
 from torch.autograd import Variable
 
-if "/home/barbara/" in os.getcwd():
-    pretrained_3d="/home/barbara/Documents/work_git/actionID/AnomalyDetectionCVPR2018-Pytorch-master/c3d-pytorch-master/c3d.pickle"
-elif "/home/peter/" in os.getcwd():
-    pretrained_3d="/home/peter/Documents/actionID/AnomalyDetectionCVPR2018-Pytorch-master/c3d-pytorch-master/c3d.pickle"
+pretrained_3d="pretrained/c3d.pickle"
 
 
-AD_pertrained_model_dir='/home/peter/Documents/actionID/AnomalyDetectionCVPR2018-Pytorch-master/short_60_low_mem/exps/model'
+
+AD_pertrained_model_dir='/exps/model'
 
 
 from network.c3d import C3D
@@ -308,7 +306,7 @@ def AD_perdiction(model_dir,dir_list,features_dir,video_parth,device=None):
     #print("it is over")
     return y_pred
 
-def network_setup(ad_model_dir='/home/peter/Documents/actionID/AnomalyDetectionCVPR2018-Pytorch-master/short_60_low_mem/exps/model'):
+def network_setup(ad_model_dir='./exps/model'):
     device = torch.device("cuda" if torch.cuda.is_available()
                           else "cpu")
 
@@ -348,7 +346,7 @@ def testing(clip_size=16,video_input=0):
     out.release()
     cv2.destroyAllWindows()
 
-    device,c3d_network_n,ad_net=network_setup(ad_model_dir='/home/peter/Documents/actionID/AnomalyDetectionCVPR2018-Pytorch-master/short_60_low_mem/exps/model')
+    device,c3d_network_n,ad_net=network_setup(ad_model_dir='./exps/model')
 
 
     #C3D
@@ -361,7 +359,7 @@ def testing(clip_size=16,video_input=0):
     print("Single C3D methord complet")
 
     #AD
-    ad_model_dir = '/home/peter/Documents/actionID/AnomalyDetectionCVPR2018-Pytorch-master/short_60_low_mem/exps/model'
+    ad_model_dir = './exps/model'
     features_dir="./test"
     video_parth=os.getcwd()+'/'+'test_output.avi'
     batch_y_pred = AD_perdiction(ad_model_dir, dir_list,features_dir,video_parth, device=device)

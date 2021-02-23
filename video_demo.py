@@ -24,19 +24,22 @@ from network.c3d import C3D
 from utils.utils import build_transforms
 
 
+
 def get_args():
     parser = argparse.ArgumentParser(description="Video Demo For Anomaly Detection")
 
     parser.add_argument('--feature_extractor',
-                        required=True,
-                        help='path to the 3d model for feature extraction')
+                         default='c3d.pickle',                        
+                         help='path to the 3d model for feature extraction')
+    
     parser.add_argument('--feature_method',
                         default='c3d',
                         choices=['c3d', 'mfnet'],
                         help='method to use for feature extraction')
-    parser.add_argument('--ad_model',
-                        required=True,
+    
+    parser.add_argument('--ad_model', default='./model_newfights_1_01/epoch_5000.pt',                     
                         help="path to the trained AD model")
+    
     parser.add_argument('--n_segments',
                         type=int,
                         default=32,

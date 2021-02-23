@@ -24,6 +24,7 @@ def load_model(model_path):
 
     """
     logging.info(f"Load the model from: {model_path}")
+    print(f"Load the model from: {model_path}")
     model = torch.load(model_path, map_location='cpu')
     logging.info(model)
     return model
@@ -112,6 +113,7 @@ class TorchModel(nn.Module):
         self.notify_callbacks('on_training_start', epochs)
 
         for epoch in range(epochs):
+            #print('do epoch')
             train_loss = self.do_epoch(criterion=criterion,
                                        optimizer=optimizer,
                                        data_iter=train_iter,
@@ -176,11 +178,14 @@ class TorchModel(nn.Module):
         total_time = 0
         self.train()
         self.notify_callbacks('on_epoch_start', epoch, len(data_iter))
+        #print('epoch start')
         for iteration, batch_with_targets in enumerate(data_iter):
             self.iteration += 1
             batch, targets = batch_with_targets['input'], batch_with_targets['target']
             start_time = time.time()
+            #print('loading batch to device...')
             batch = self.data_to_device(batch, self.device)
+            #print(len(batch))
             targets = self.data_to_device(targets, self.device)
 
             outputs = self.model(batch)
@@ -206,7 +211,7 @@ class TorchModel(nn.Module):
             self.iteration += 1
 
         loss = total_loss / len(data_iter)
-        print('epoch: ',epoch,'loss: ', loss  )
+        print('epoch: ',epoch,'loss: ', loss, 'epoch time:', total_time )
         self.notify_callbacks('on_epoch_end', loss)
         return loss
 

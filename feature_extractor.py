@@ -12,11 +12,12 @@ from utils.load_model import load_feature_extractor
 from utils.utils import build_transforms, register_logger, get_torch_device
 
 
+
 def get_args():
 	parser = argparse.ArgumentParser(description="PyTorch Video Classification Parser")
 	# io /home/dgx-shared/anomaly_dataset/Anomaly-Videos
-    
-	parser.add_argument('--dataset_path',  default='./fights_unsorted/',
+    # /home/dgx-shared/anomaly_dataset/Train
+	parser.add_argument('--dataset_path',  default='/home/dgx-shared/anomaly_dataset/Anomaly-Videos/',
 						help="path to dataset")
 	parser.add_argument('--clip-length', type=int, default=16,
 						help="define the length of each input sample.")
@@ -28,22 +29,24 @@ def get_args():
 						help="log the writing of clips every n steps.")
 	parser.add_argument('--log-file', type=str, default="logs",
 						help="set logging file.")
-	parser.add_argument('--save_dir', type=str, default="features",
+	parser.add_argument('--save_dir', type=str, default="features_MF",
 						help="set logging file.")
 
 	# optimization
-	parser.add_argument('--batch-size', type=int, default=128,
+	parser.add_argument('--batch_size', type=int, default=128,
 						help="batch size")
 
 	# model
 	parser.add_argument('--model_type',
 						type=str,
-						default='c3d',
+						default='mfnet',
 						help="type of feature extractor",
 						choices=['c3d', 'i3d', 'mfnet'])
     
 	parser.add_argument('--pretrained_3d',
-                        default='c3d.pickle',
+                        default='pretrained/MFNet3D_UCF-101_Split-1_96.3.pth',
+                        #pretrained/MFNet3D_UCF-101_Split-1_96.3.pth
+                        #c3d.pickle
 						type=str,
 						help="load default 3D pretrained model.")
 
@@ -51,7 +54,37 @@ def get_args():
 
 
 def to_segments(data, num=32):
-	
+	"""
+	These code is taken from:
+	https://github.com/rajanjitenpatel/C3D_feature_extraction/blob/b5894fa06d43aa62b3b64e85b07feb0853e7011a/extract_C3D_feature.py#L805
+	:param data: list of features of a certain video
+	:return: list of 32 segments
+	"""
+	data = np.array(data)
+	Segments_Features = []
+	thirty2_shots = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
+	for ss, ee in zip(thirty2_shots[:-1], thirty2_shots[1:]):
+		if ss == ee:
+			temp_vect = data[min(ss, data.shape[0] - 1), :]
+		else:
+			temp_vect = data[ss:ee, :].mean(axis=0)
+
+		temp_vect = temp_vect / np.linalg.norm(temp_vect)
+		if np.linalg.norm == 0:
+			logging.error("Feature norm is 0")
+			exit()
+		if len(temp_vect) != 0:
+			Segments_Features.append(temp_vect.tolist())
+
+	return Segments_Features
+
+def to_segments(data, num=32):
+	"""
+	These code is taken from:
+	https://github.com/rajanjitenpatel/C3D_feature_extraction/blob/b5894fa06d43aa62b3b64e85b07feb0853e7011a/extract_C3D_feature.py#L805
+	:param data: list of features of a certain video
+	:return: list of 32 segments
+	"""
 	data = np.array(data)
 	Segments_Features = []
 	thirty2_shots = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
@@ -121,25 +154,14 @@ class FeaturesWriter:
 		self.store(feature, idx)
 
 
-def read_features(file_path):
-	if not path.exists(file_path):
-		raise Exception(f"Feature doesn't exist: {file_path}")
-	features = None
-	with open(file_path, 'r') as fp:
-		data = fp.read().splitlines(keepends=False)
-		features = np.zeros((len(data), 4096))
-		for i, line in enumerate(data):
-			features[i, :] = [float(x) for x in line.split(' ')]
+def get_features_loader(dataset_path, clip_length, frame_interval, batch_size, num_workers, mode, save_dir):
 
-	return torch.from_numpy(features).float()
-
-
-def get_features_loader(dataset_path, clip_length, frame_interval, batch_size, num_workers, mode):
 	data_loader = VideoIter(dataset_path=dataset_path,
 							clip_length=clip_length,
 							frame_stride=frame_interval,
 							video_transform=build_transforms(mode),
-							return_label=False)
+							return_label=False,
+                            features_path = save_dir)
 
 	data_iter = torch.utils.data.DataLoader(data_loader,
 											batch_size=batch_size,
@@ -163,7 +185,8 @@ def main():
 												args.frame_interval,
 												args.batch_size,
 												args.num_workers,
-												args.model_type)
+												args.model_type,
+                                                args.save_dir)
 
 	network = load_feature_extractor(args.model_type, args.pretrained_3d, device).eval()
 

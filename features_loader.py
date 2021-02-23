@@ -5,9 +5,22 @@ from os import path
 import numpy as np
 import torch
 from torch.utils import data
-from feature_extractor import read_features
 from torch.utils.data.dataset import Dataset
 
+def read_features(file_path):
+    if not path.exists(file_path):
+        raise Exception(f"Feature doesn't exist: {file_path}")
+    features = None
+    with open(file_path, 'r') as fp:
+        data = fp.read().splitlines(keepends=False)
+        
+    features = np.zeros((len(data), 6144))
+    #print(features.shape)
+    for i, line in enumerate(data):
+        #print(len(line.split(' ')))
+        features[i, :] = [float(x) for x in line.split(' ')]
+            
+    return torch.from_numpy(features).float()
 
 class FeaturesLoader(data.Dataset):
     def __init__(self,
@@ -42,7 +55,7 @@ class FeaturesLoader(data.Dataset):
                 feature, label = self.get_feature(index)
                 succ = True
             except Exception as e:
-                logging.warning("VideoIter:: error {}, {}".format(index, e))
+                logging.warning("VideoIter: error {}, {}".format(index, e))
 
         return feature, label
 
@@ -116,7 +129,7 @@ class FeaturesLoaderVal(data.Dataset):
                 data = self.get_feature(index)
                 succ = True
             except Exception as e:
-                logging.warning("VideoIter:: ERROR!! (Force using another index:\n{})\n{}".format(index, e))
+                logging.warning("VideoIter: ERROR!! (Force using another index:\n{})\n{}".format(index, e))
 
         return data
 
@@ -148,6 +161,54 @@ class FeaturesLoaderVal(data.Dataset):
 
         return features_list
 
+class FeaturesLoaderEval(data.Dataset):
+    def __init__(self,
+                 features_path,
+                 annotation_path,):
+
+        super(FeaturesLoaderEval, self).__init__()
+        self.features_path = features_path
+        # load video list
+        self.state = 'Normal'
+        self.features_list = FeaturesLoaderEval._get_features_list(
+            features_path=features_path,
+            annotation_path=annotation_path)
+
+    def __len__(self):
+        return len(self.features_list)
+
+    def __getitem__(self, index):
+        succ = False
+        while not succ:
+            try:
+                data = self.get_feature(index)
+                succ = True
+            except Exception as e:
+                logging.warning("VideoIter: ERROR!! (Force using another index:\n{})\n{}".format(index, e))
+
+        return data
+
+    def get_feature(self, index):
+        feature_subpath, length = self.features_list[index]
+        features = read_features(f"{feature_subpath}.txt")
+        return features, length
+
+    @staticmethod
+    def _get_features_list(features_path, annotation_path):
+        assert os.path.exists(features_path)
+        features_list = []
+        with open(annotation_path, 'r') as f:
+            lines = f.read().splitlines(keepends=False)
+            for line in lines:
+                items = line.split()                
+                file = items[0].split('.')[0]
+                file = file.replace('/', os.sep)
+                feature_path = os.path.join(features_path, file)
+                length = int(items[1])
+
+                features_list.append((feature_path, length))
+
+        return features_list
 
 class FeaturesDatasetWrapper(Dataset):
     def __init__(self, features_path,
