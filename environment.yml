@@ -322,5 +322,9 @@ dependencies:
     - torchvision==0.4.0
     - pytorch-wrapper==1.1.0
     - tensorboard
+    - albumentations
+    - onnx
+    - opencv-python==4.2.0.34
+    
 prefix: /home/vssmorozov/anaconda3
 
