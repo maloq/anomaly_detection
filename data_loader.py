@@ -127,12 +127,14 @@ class SingleVideoIter(VideoIter):
                  video_path,
                  video_transform=None,
                  return_label=False):
+        
         super(SingleVideoIter, self).__init__(clip_length, frame_stride, video_path, video_transform, return_label)
 
-    def _get_video_list(self, dataset_path):
-        return [dataset_path]
+    def _get_video_list(self, video_path):
+        return [video_path]
 
     def __getitem__(self, idx):
+        
         video, _, _, _ = self.video_clips.get_clip(idx)
         in_clip_frames = list(range(0, self.total_clip_length_in_frames, self.frames_stride))
         video = video[in_clip_frames]

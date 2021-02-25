@@ -62,8 +62,8 @@ def to_segments(data, num=32):
 	"""
 	data = np.array(data)
 	Segments_Features = []
-	thirty2_shots = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
-	for ss, ee in zip(thirty2_shots[:-1], thirty2_shots[1:]):
+	features_cuts = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
+	for ss, ee in zip(features_cuts[:-1], features_cuts[1:]):
 		if ss == ee:
 			temp_vect = data[min(ss, data.shape[0] - 1), :]
 		else:
@@ -80,15 +80,13 @@ def to_segments(data, num=32):
 
 def to_segments(data, num=32):
 	"""
-	These code is taken from:
-	https://github.com/rajanjitenpatel/C3D_feature_extraction/blob/b5894fa06d43aa62b3b64e85b07feb0853e7011a/extract_C3D_feature.py#L805
-	:param data: list of features of a certain video
+    :param data: list of features of a certain video
 	:return: list of 32 segments
 	"""
 	data = np.array(data)
 	Segments_Features = []
-	thirty2_shots = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
-	for ss, ee in zip(thirty2_shots[:-1], thirty2_shots[1:]):
+	features_cuts = np.round(np.linspace(0, len(data) - 1, num=num+1)).astype(int)
+	for ss, ee in zip(features_cuts[:-1], features_cuts[1:]):
 		if ss == ee:
 			temp_vect = data[min(ss, data.shape[0] - 1), :]
 		else:
@@ -151,7 +149,8 @@ class FeaturesWriter:
 			self.dump()
 			self._init_video(video_name, dir)
 
-		self.store(feature, idx)
+		self.store(feature, idx) 
+
 
 
 def get_features_loader(dataset_path, clip_length, frame_interval, batch_size, num_workers, mode, save_dir):
@@ -171,10 +170,30 @@ def get_features_loader(dataset_path, clip_length, frame_interval, batch_size, n
 
 	return data_loader, data_iter
 
+def get_single_features_loader(video_path, clip_length, frame_interval, batch_size, num_workers, mode):
 
+	data_loader = SingleVideoIter(video_path=video_path,
+                                clip_length=clip_length,
+                                frame_stride=frame_interval,
+                                video_transform=build_transforms(mode),
+                                return_label=False)
+
+	data_iter = torch.utils.data.DataLoader(data_loader,
+											batch_size=batch_size,
+											shuffle=False,
+											num_workers=num_workers,
+											pin_memory=True)
+
+	return data_loader, data_iter
+
+def get_segments(raw_features):        
+    logging.info('Getting features ',len(raw_features))
+    features = to_segments(raw_features, num = 2)  
+    return features
+    
 def main():
+    
 	device = get_torch_device()
-
 	args = get_args()
 	register_logger(log_file=args.log_file)
 
@@ -214,6 +233,45 @@ def main():
 
 	features_writer.dump()
 
+def single_video_features(video):
+    
+	device = get_torch_device()
+	args = get_args()
+	register_logger(log_file=args.log_file)
 
+	cudnn.benchmark = True
+
+	data_loader, data_iter = get_single_features_loader(args.dataset_path,
+												args.clip_length,
+												args.frame_interval,
+												args.batch_size,
+												args.num_workers,
+												args.model_type)
+
+	network = load_feature_extractor(args.model_type, args.pretrained_3d, device).eval()
+
+	print('Video count: ', data_loader.video_count)
+    
+	loop_i = 0
+    
+	with torch.no_grad():
+		for data, clip_idxs, dirs, vid_names in data_iter:
+			outputs = network(data.to(device)).detach().cpu().numpy()
+
+			for i, (dir, vid_name, clip_idx) in enumerate(zip(dirs, vid_names, clip_idxs)):
+				if loop_i == 0:
+					logging.info("Getting clip {clip_idx} of video {vid_name}")
+
+				loop_i += 1
+				loop_i %= args.log_every
+
+				dir = path.join(args.save_dir, dir)
+				features_writer.write(feature=outputs[i],
+									  video_name=vid_name,
+									  idx=clip_idx,
+									  dir=dir, )
+
+	features_writer.dump()
+    
 if __name__ == "__main__":
 	main()

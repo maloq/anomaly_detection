@@ -321,7 +321,6 @@ dependencies:
     - torch==1.7.0
     - torchvision==0.4.0
     - pytorch-wrapper==1.1.0
-    - PyQt5
     - tensorboard
 prefix: /home/vssmorozov/anaconda3
 
